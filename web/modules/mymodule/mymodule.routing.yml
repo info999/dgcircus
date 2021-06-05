@@ -1,0 +1,7 @@
+mymodule.settings:
+  path: '/admin/config/system/notify-settings'
+  defaults:
+    _title: 'Notification email'
+    _form: 'Drupal\mymodule\Form\SettingsForm'
+  requirements:
+    _role: 'editor'

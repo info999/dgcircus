@@ -1,0 +1,70 @@
+<?php
+
+/**
+ * @file
+ * Functions to support theming in the SASS Starterkit subtheme.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_form_system_theme_settings_alter() for settings form.
+ *
+ * Replace Barrio setting options with subtheme ones.
+ *
+ * Example on how to alter theme settings form
+ */
+function mybarrio_form_system_theme_settings_alter(&$form, FormStateInterface $form_state) {
+  $form['components']['navbar']['bootstrap_barrio_navbar_top_background']['#options'] = [
+    'bg-primary' => t('Primary'),
+    'bg-secondary' => t('Secondary'),
+    'bg-light' => t('Light'),
+    'bg-dark' => t('Dark'),
+    'bg-white' => t('White'),
+    'bg-transparent' => t('Transparent'),
+  ];
+  $form['components']['navbar']['bootstrap_barrio_navbar_background']['#options'] = [
+    'bg-primary' => t('Primary'),
+    'bg-secondary' => t('Secondary'),
+    'bg-light' => t('Light'),
+    'bg-dark' => t('Dark'),
+    'bg-white' => t('White'),
+    'bg-transparent' => t('Transparent'),
+  ];
+}
+
+
+/**
+ * Implements hook_preprocess_HOOK() for views-view-field.html.twig.
+ */
+function mybarrio_preprocess_views_view_field(&$variables) { // Random banner output for group
+  $view = $variables['view'];
+  $field = $variables['field'];
+  
+  
+  if ($view->id() == 'banner_show') {
+    if ($field->field == 'tid') { // override output for the field
+        
+        // get all published banners for the taxonomy term
+        $nodes = \Drupal::entityTypeManager()->getStorage('node')->loadByProperties([
+            'field_banner_group' => $variables['row']->tid,
+            'type' => 'banner',
+            'status' => 1,
+        ]);
+
+        if (!empty($nodes)) {
+
+            $entity_type = 'node';
+            $view_mode = 'teaser';
+
+            $node = $nodes[array_rand($nodes)]; // select random node
+            $build = \Drupal::entityTypeManager()->getViewBuilder($entity_type)->view($node, $view_mode);
+            $variables['output'] = render($build);
+
+        } else {
+            $variables['output'] = '';
+        }
+      
+    }
+  }
+}

@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for mymodule module.
+ *
+ * @DCG
+ * This file is no longer required in Drupal 8.
+ * @see https://www.drupal.org/node/2217931
+ */
+ 
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
+use Drupal\node\Entity\Node;
+
+
+function mymodule_toolbar_alter(&$items) { // скрыть ненужный пункт Manage в admin toolbar для авторизованных пользователей
+    $uid = \Drupal::currentUser()->id();
+    $user = \Drupal\user\Entity\User::load($uid);
+
+    if ($uid != 1) {
+        unset($items['admin_toolbar_tools']);
+        unset($items['administration']);
+    }
+}
+
+function mymodule_views_pre_render(\Drupal\views\ViewExecutable $view) { // disable cache for specific view
+
+     if ($view->id() == 'banner_show') {
+         \Drupal::service('page_cache_kill_switch')->trigger();
+     }
+
+}
+
+function mymodule_cron() { // unpublish old banners and send notification email
+   
+    $now = new DrupalDateTime('now');
+    
+    $query = \Drupal::entityQuery('node')
+      ->condition('status', NODE_PUBLISHED)
+      ->condition('type', 'banner')
+      ->condition('field_display_until', $now->format(DateTimeItemInterface::DATETIME_STORAGE_FORMAT), '<')
+//      ->range(0, 2)
+    ;
+    $result = $query->execute();
+      
+    //\Drupal::logger('mymodule')->notice(print_r($result, true));
+
+    if (!empty($result)) {
+    
+        $mailManager = \Drupal::service('plugin.manager.mail');
+        $module = 'mymodule';
+        $mailkey = 'banners_unpublished';
+        $to = \Drupal::config('mymodule.settings')->get('notify_email');
+        $langcode = \Drupal::currentUser()->getPreferredLangcode();
+        $send = true;
+        $params['message'] = '';
+       
+        foreach ($result as $key =>  $nid) {
+            $node = Node::load($nid);
+            $node->setPublished(false);
+            $node->save();
+
+            $params['message'] .= "Title: ";
+            $params['message'] .= $node->get('title')->value;
+            $params['message'] .= "\n\n";
+            $params['message'] .= "Message: \n\n";
+            $params['message'] .= $node->get('body')->value;
+            $params['message'] .= "\n\n";
+         }
+           
+            
+        $mailresult = $mailManager->mail($module, $mailkey, $to, $langcode, $params, NULL, $send);
+        if ($mailresult['result'] !== true) {
+            \Drupal::logger('mymodule')->error('There was a problem sending your message and it was not sent.');
+        } else {
+            \Drupal::logger('mymodule')->notice('Your message has been sent.');
+        }
+    }
+}
+
+/**
+* Implements hook_mail().
+*/
+function mymodule_mail($key, &$message, $params) {
+
+    switch ($key) {
+        case 'banners_unpublished':
+            $message['from'] = \Drupal::config('system.site')->get('mail');
+            $message['subject'] = 'Banners unpublished';
+            $message['body'][] = $params['message'];
+            break;
+    }
+}

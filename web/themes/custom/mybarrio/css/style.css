@@ -1,0 +1,22 @@
+/**
+ * @file
+ * Subtheme specific CSS.
+ */
+
+.view .views-field-operations .dropbutton-wrapper {
+	padding-right: 0;
+	margin-right: 0;
+	width: 150px;
+}
+
+.view td.views-field-operations {
+	width: 200px;
+}
+
+.view th, .view th a {
+    color: black;
+}
+
+#node-banner-form .form-type-vertical-tabs {
+    display: none;
+}
